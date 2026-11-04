@@ -1,0 +1,72 @@
+# Example configuration for claude-ssh.
+#
+# Copy this file to `claude-ssh.yaml` in the same directory as `claude-ssh.exe`
+# (or point the CLAUDE_SSH_CONFIG environment variable at it) and edit as needed.
+
+ssh:
+  # Path to the ssh client. Defaults to `ssh.exe` found on PATH. IDEs may launch
+  # with a different PATH than your shell, so an absolute path is recommended.
+  path: C:\Windows\System32\OpenSSH\ssh.exe
+
+  # The local Windows user Claude Code should run as (required).
+  # Domain/Microsoft accounts can be given as `user@domain`.
+  user: claude
+
+  # Defaults to localhost.
+  host: localhost
+
+  # Optional.
+  # port: 22
+  # identity_file: C:\Users\me\.ssh\id_ed25519_claude
+
+  # Passed to ssh as `-o Key=Value`.
+  options:
+    # Never prompt for passwords/passphrases: IDEs have no way to answer them.
+    BatchMode: "yes"
+    StrictHostKeyChecking: "yes"
+
+  # Any other ssh arguments, passed verbatim before the host.
+  extra_args: []
+
+claude:
+  # Full path to Claude Code as seen by the target user (.exe, .cmd or .bat).
+  # Typical locations:
+  #   Native installer: C:\Users\claude\.local\bin\claude.exe
+  #   npm global:       C:\Users\claude\AppData\Roaming\npm\claude.cmd
+  command: C:\Users\claude\.local\bin\claude.exe
+
+  # Extra arguments inserted before those passed to the wrapper.
+  args: []
+
+  # PowerShell executable used on the remote side to run the launch script.
+  # Defaults to Windows PowerShell. Must not contain any of: " % & < > ( ) @ ^ | !
+  # powershell: powershell.exe
+
+env:
+  # Environment variables to pass from the IDE to Claude Code. Nothing else is
+  # forwarded: the target user's own environment is used. A trailing `*` matches
+  # any suffix, and matching ignores case.
+  #
+  # These are the variables we believe the IDE integrations and terminals set. The
+  # list still needs checking: set `logging.level: debug` to log the names of all
+  # variables the wrapper receives.
+  forward:
+    - CLAUDE_CODE_*            # VS Code sets several, e.g. CLAUDE_CODE_ENTRYPOINT
+    - CLAUDE_AGENT_SDK_VERSION # set by VS Code
+    - MCP_CONNECTION_NONBLOCKING # set by VS Code
+    - ENABLE_IDE_INTEGRATION
+    - TERM_PROGRAM             # VS Code integrated terminal ("vscode")
+    - TERM_PROGRAM_VERSION
+    - TERMINAL_EMULATOR        # JetBrains terminal ("JetBrains-JediTerm")
+    - COLORTERM
+    - FORCE_COLOR
+    - NO_COLOR
+
+logging:
+  # Log file to append to. Logging is off when this is not set. Relative paths are
+  # resolved against this config file's directory.
+  # file: claude-ssh.log
+
+  # error | warn | info | debug. Default: info.
+  # debug also logs arguments and Claude Code's stderr, which may contain sensitive data.
+  level: info

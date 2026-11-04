@@ -1,0 +1,58 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # The release tag (e.g. v1.2.3 or 1.2.3) is the source of truth for the version. It is
+      # written into Cargo.toml for the build only; the change is not committed back.
+      - name: Set version from tag
+        shell: pwsh
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if ($env:TAG -notmatch '^v?(\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?)$') {
+            throw "Release tag '$env:TAG' is not a version like v1.2.3"
+          }
+          $version = $Matches[1]
+          $toml = Get-Content Cargo.toml -Raw
+          $toml = ([regex]'(?m)^version = "[^"]*"').Replace($toml, "version = `"$version`"", 1)
+          Set-Content Cargo.toml $toml -NoNewline
+          # Update the package's own entry in Cargo.lock so --locked builds still pass.
+          cargo update --workspace
+          Write-Host "Version set to $version"
+
+      - name: Test
+        run: cargo test --locked
+
+      - name: Build
+        run: cargo build --release --locked
+
+      - name: Package
+        id: package
+        shell: pwsh
+        run: |
+          $name = "claude-ssh-${{ github.event.release.tag_name }}-windows-x64"
+          $staging = Join-Path $env:RUNNER_TEMP $name
+          New-Item -ItemType Directory -Path $staging | Out-Null
+          Copy-Item target\release\claude-ssh.exe, README.md, LICENSE.md, claude-ssh.example.yaml -Destination $staging
+          $zip = Join-Path $env:RUNNER_TEMP "$name.zip"
+          Compress-Archive -Path "$staging\*" -DestinationPath $zip
+          "zip=$zip" >> $env:GITHUB_OUTPUT
+
+      - name: Upload to release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" "${{ steps.package.outputs.zip }}" --repo "${{ github.repository }}"

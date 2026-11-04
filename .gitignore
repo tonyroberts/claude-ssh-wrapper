@@ -1,0 +1,3 @@
+/target
+# Local configs; the example config is committed instead.
+/claude-ssh.yaml
